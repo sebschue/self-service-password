@@ -133,6 +133,20 @@ function change_password( $ldapInstance, $dn, $password, $ad_mode, $ad_options, 
         } else {
             list($error_code, $error_msg) = $ldapInstance->modify_attributes($dn, $userdata);
         }
+
+        if (!$ad_mode) #FIXME: Introduce a configuration value to config.inc.php - something like ldap_update_passwort_expiration
+        {
+            # Update password expiration
+            # (otherwise passwords on FreeIPA are expired instantly)
+            $ldap_password_duration = 60 * 60 * 24 * 365; #FIXME: Move to config.inc.php for customization
+            $userdata = [];
+            $userdata["krbPasswordExpiration"] = date('Ymdhis', time()+$ldap_password_duration)."Z";
+            if ( $use_ppolicy_control ) {
+                list($error_code, $error_msg, $ppolicy_error_code) = $ldapInstance->modify_attributes_using_ppolicy($dn, $userdata);
+            } else {
+                list($error_code, $error_msg) = $ldapInstance->modify_attributes($dn, $userdata);
+            }
+        }
     }
 
     if ( !isset($error_code) ) {
